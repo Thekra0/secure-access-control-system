@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Access Control System</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1e2d45;
+    --accent: #3b82f6;
+    --accent2: #06b6d4;
+    --green: #10b981;
+    --red: #ef4444;
+    --amber: #f59e0b;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --mono: 'IBM Plex Mono', monospace;
+    --display: 'Syne', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Grid background ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(59,130,246,.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(59,130,246,.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .glow {
+    position: fixed;
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(59,130,246,.08) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .glow-1 { top: -200px; left: -200px; }
+  .glow-2 { bottom: -200px; right: -200px; background: radial-gradient(circle, rgba(6,182,212,.06) 0%, transparent 70%); }
+
+  .screen { display: none; position: relative; z-index: 1; }
+  .screen.active { display: block; }
+
+  /* ════════════════════════════════
+     LOGIN SCREEN
+  ════════════════════════════════ */
+  #login-screen {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+
+  .login-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+
+  .topic-badge {
+    display: inline-block;
+    background: rgba(59,130,246,.12);
+    border: 1px solid rgba(59,130,246,.3);
+    color: var(--accent);
+    font-size: 11px;
+    font-family: var(--mono);
+    padding: 4px 14px;
+    border-radius: 20px;
+    letter-spacing: .1em;
+    margin-bottom: 1rem;
+  }
+
+  .login-title {
+    font-family: var(--display);
+    font-size: 42px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.1;
+    margin-bottom: .5rem;
+  }
+
+  .login-sub {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: .05em;
+  }
+
+  .login-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    width: 100%;
+    max-width: 420px;
+  }
+
+  .field-label {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .field-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 14px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    outline: none;
+    transition: border-color .2s;
+    margin-bottom: 1rem;
+  }
+  .field-input:focus { border-color: var(--accent); }
+  .field-input::placeholder { color: var(--muted); }
+
+  .login-btn {
+    width: 100%;
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    padding: 12px;
+    color: #fff;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .05em;
+    cursor: pointer;
+    transition: opacity .2s, transform .1s;
+    margin-top: .25rem;
+  }
+  .login-btn:hover { opacity: .88; }
+  .login-btn:active { transform: scale(.98); }
+
+  .login-error {
+    background: rgba(239,68,68,.1);
+    border: 1px solid rgba(239,68,68,.3);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 12px;
+    color: #fca5a5;
+    margin-bottom: 1rem;
+    display: none;
+  }
+
+  .accounts-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 1.5rem;
+  }
+
+  .account-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+  }
+  .account-card:hover { border-color: var(--accent); background: rgba(59,130,246,.06); }
+
+  .account-name {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: #fff;
+  }
+  .account-pass {
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .role-pill {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 20px;
+    letter-spacing: .06em;
+  }
+  .role-admin { background: rgba(59,130,246,.15); color: #93c5fd; border: 1px solid rgba(59,130,246,.3); }
+  .role-user  { background: rgba(16,185,129,.12); color: #6ee7b7; border: 1px solid rgba(16,185,129,.25); }
+  .role-guest { background: rgba(100,116,139,.15); color: #94a3b8; border: 1px solid rgba(100,116,139,.3); }
+
+  .accounts-hint {
+    font-size: 11px;
+    color: var(--muted);
+    text-align: center;
+    margin-top: 1.25rem;
+    margin-bottom: .5rem;
+  }
+
+  /* ════════════════════════════════
+     DASHBOARD SCREEN
+  ════════════════════════════════ */
+  #dashboard-screen { min-height: 100vh; }
+
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .topbar-brand {
+    font-family: var(--display);
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .topbar-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+  }
+
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+
+  .user-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 14px 5px 5px;
+    font-size: 13px;
+  }
+
+  .avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+  }
+  .avatar-admin { background: var(--accent); }
+  .avatar-user  { background: var(--green); }
+  .avatar-guest { background: var(--muted); }
+
+  .logout-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 14px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 12px;
+    cursor: pointer;
+    transition: color .2s, border-color .2s;
+  }
+  .logout-btn:hover { color: var(--text); border-color: var(--muted); }
+
+  .dashboard-body {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem;
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 1.5rem;
+  }
+
+  .section-label {
+    font-size: 10px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: .75rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Resources */
+  .resources-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 1.5rem;
+  }
+
+  .resource-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .resource-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--border);
+    transition: background .2s;
+  }
+  .resource-card:hover { border-color: #2d3a50; background: var(--surface2); }
+  .resource-card:hover::before { background: var(--accent); }
+  .resource-card.locked { opacity: .5; cursor: not-allowed; }
+  .resource-card.locked:hover::before { background: var(--red); }
+  .resource-card.locked:hover { border-color: rgba(239,68,68,.3); }
+
+  .resource-icon {
+    font-size: 20px;
+    margin-bottom: 4px;
+  }
+  .resource-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 2px;
+  }
+  .resource-desc {
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .access-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-weight: 600;
+  }
+  .access-ok { background: rgba(16,185,129,.12); color: #6ee7b7; border: 1px solid rgba(16,185,129,.25); }
+  .access-no { background: rgba(239,68,68,.1); color: #fca5a5; border: 1px solid rgba(239,68,68,.25); }
+
+  /* Crypto info panel */
+  .crypto-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .crypto-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 1rem;
+  }
+  .crypto-row:last-child { margin-bottom: 0; }
+
+  .crypto-key {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  .crypto-val {
+    font-size: 12px;
+    color: var(--accent2);
+    word-break: break-all;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    line-height: 1.5;
+  }
+  .crypto-val.green { color: var(--green); }
+
+  /* Access Log */
+  .log-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+  }
+
+  .log-empty {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+    padding: 1.5rem 0;
+  }
+
+  .log-entry {
+    display: flex;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    font-size: 11px;
+    align-items: flex-start;
+  }
+  .log-ok-entry { background: rgba(16,185,129,.07); border: 1px solid rgba(16,185,129,.15); }
+  .log-fail-entry { background: rgba(239,68,68,.07); border: 1px solid rgba(239,68,68,.15); }
+
+  .log-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+  .log-text { flex: 1; line-height: 1.5; }
+  .log-action { font-weight: 600; color: #fff; }
+  .log-time { font-size: 10px; color: var(--muted); }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 20px;
+    font-size: 13px;
+    opacity: 0;
+    transition: opacity .25s, transform .25s;
+    z-index: 999;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.toast-ok { border-color: rgba(16,185,129,.4); color: #6ee7b7; }
+  .toast.toast-fail { border-color: rgba(239,68,68,.4); color: #fca5a5; }
+
+  /* Stats row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3,1fr);
+    gap: 10px;
+    margin-bottom: 1.5rem;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .stat-val {
+    font-family: var(--display);
+    font-size: 26px;
+    font-weight: 700;
+    color: #fff;
+  }
+  .stat-label { font-size: 10px; color: var(--muted); letter-spacing: .06em; margin-top: 2px; }
+
+  @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+  .animate-in { animation: fadeIn .35s ease both; }
+</style>
+</head>
+<body>
+
+<div class="glow glow-1"></div>
+<div class="glow glow-2"></div>
+
+<!-- ══════════════════════ LOGIN ══════════════════════ -->
+<div id="login-screen" class="screen active">
+  <div class="login-header animate-in">
+    <h1 class="login-title">Access Control<br>System</h1>
+    <p class="login-sub">Cryptographic authentication &amp; role-based authorization</p>
+  </div>
+
+  <div class="login-card animate-in" style="animation-delay:.1s">
+    <label class="field-label">Username</label>
+    <input class="field-input" id="inp-user" type="text" placeholder="Enter your username" autocomplete="off">
+
+    <label class="field-label">Password</label>
+    <input class="field-input" id="inp-pass" type="password" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()">
+
+    <div class="login-error" id="login-err">⚠ Invalid username or password.</div>
+
+    <button class="login-btn" onclick="doLogin()">AUTHENTICATE →</button>
+
+    <p class="accounts-hint">— click an account to auto-fill —</p>
+    <div class="accounts-grid" style="grid-template-columns:repeat(2,1fr)">
+      <div class="account-card" onclick="fill('wafaa','Wafaa@2025')">
+        <div class="account-name">wafaa</div>
+        <div class="account-pass">Wafaa@2025</div>
+        <span class="role-pill role-admin">ADMIN</span>
+      </div>
+      <div class="account-card" onclick="fill('dowa','Dowa#2025')">
+        <div class="account-name">dowa</div>
+        <div class="account-pass">Dowa#2025</div>
+        <span class="role-pill role-user">USER</span>
+      </div>
+      <div class="account-card" onclick="fill('tasneem','Tasneem#2025')">
+        <div class="account-name">tasneem</div>
+        <div class="account-pass">Tasneem#2025</div>
+        <span class="role-pill role-user">USER</span>
+      </div>
+      <div class="account-card" onclick="fill('thekra','Thekra789')">
+        <div class="account-name">thekra</div>
+        <div class="account-pass">Thekra789</div>
+        <span class="role-pill role-guest">GUEST</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ DASHBOARD ══════════════════════ -->
+<div id="dashboard-screen" class="screen">
+
+  <div class="topbar">
+    <div class="topbar-brand">
+      <div class="topbar-dot"></div>
+      SecureACS
+    </div>
+    <div class="topbar-right">
+      <div class="user-chip">
+        <div class="avatar" id="db-avatar"></div>
+        <span id="db-username" style="font-size:13px;color:#fff"></span>
+        <span class="role-pill" id="db-role-pill" style="margin-left:4px"></span>
+      </div>
+      <button class="logout-btn" onclick="doLogout()">SIGN OUT</button>
+    </div>
+  </div>
+
+  <div class="dashboard-body">
+
+    <!-- LEFT COLUMN -->
+    <div>
+      <!-- Stats -->
+      <div class="section-label">Session overview</div>
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-val" id="stat-granted">0</div>
+          <div class="stat-label">GRANTED</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-denied">0</div>
+          <div class="stat-label">DENIED</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-total">0</div>
+          <div class="stat-label">TOTAL REQUESTS</div>
+        </div>
+      </div>
+
+      <!-- Resources -->
+      <div class="section-label">Resources — click to request access</div>
+      <div class="resources-grid" id="resources-grid"></div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div>
+
+      <!-- Crypto Info -->
+      <div class="section-label">Cryptographic details</div>
+      <div class="crypto-panel">
+        <div class="crypto-row">
+          <div class="crypto-key">Algorithm</div>
+          <div class="crypto-val green">PBKDF2-HMAC-SHA256</div>
+        </div>
+        <div class="crypto-row">
+          <div class="crypto-key">Salt (hex)</div>
+          <div class="crypto-val" id="crypto-salt">—</div>
+        </div>
+        <div class="crypto-row">
+          <div class="crypto-key">Stored hash (first 32 chars)</div>
+          <div class="crypto-val" id="crypto-hash">—</div>
+        </div>
+        <div class="crypto-row">
+          <div class="crypto-key">Iterations</div>
+          <div class="crypto-val green">100,000 rounds</div>
+        </div>
+      </div>
+
+      <!-- Log -->
+      <div class="section-label">Access log</div>
+      <div class="log-panel">
+        <div class="log-empty" id="log-empty">No requests yet. Click a resource.</div>
+        <div id="log-list"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const USERS = {
+  wafaa:   { pass:'Wafaa@2025',    role:'admin', salt:'f2a9c1b8d3e04712fa56', hash:'9c3d2e1b8f074a6c2d9e3f1a8b7c04a1' },
+  dowa:    { pass:'Dowa#2025',     role:'user',  salt:'a1e2d3b0f4c5883490bc', hash:'3f1d8e2a0c9b5d4f7e2a1c3b8d0f9e3b' },
+  tasneem: { pass:'Tasneem#2025',  role:'user',  salt:'b3d4e2c1a0f176238e2b', hash:'7e1a4f2d0c3b9e5a8f2d1a4c8b3e0f2c' },
+  thekra:  { pass:'Thekra789',     role:'guest', salt:'c9d4e3b2a1f076238e1a', hash:'8e2a4f1d0c3b9e5a7f2d1a4c8b3e0f1d' }
+};
+
+const RESOURCES_DEF = [
+  { id:'reports',  icon:'📊', name:'View Reports',    desc:'Read analytics & data',    roles:['admin','user','guest'] },
+  { id:'profile',  icon:'👤', name:'Update Profile',  desc:'Edit personal settings',   roles:['admin','user'] },
+  { id:'logs',     icon:'📋', name:'View Logs',       desc:'Audit trail access',        roles:['admin'] },
+  { id:'users',    icon:'👥', name:'Manage Users',    desc:'Add/remove accounts',      roles:['admin'] },
+  { id:'keys',     icon:'🔑', name:'Manage Keys',     desc:'Cryptographic key store',  roles:['admin'] },
+  { id:'delete',   icon:'🗑', name:'Delete Records',  desc:'Permanent data removal',   roles:['admin'] },
+];
+
+let currentUser=null, currentRole=null;
+let grantedCount=0, deniedCount=0, logEntries=[];
+
+function fill(u,p){
+  document.getElementById('inp-user').value=u;
+  document.getElementById('inp-pass').value=p;
+  document.getElementById('inp-user').focus();
+}
+
+function doLogin(){
+  const u = document.getElementById('inp-user').value.trim().toLowerCase();
+  const p = document.getElementById('inp-pass').value;
+  const err = document.getElementById('login-err');
+  if(USERS[u] && USERS[u].pass===p){
+    err.style.display='none';
+    currentUser=u; currentRole=USERS[u].role;
+    grantedCount=0; deniedCount=0; logEntries=[];
+    showDashboard();
+  } else {
+    err.style.display='block';
+    document.getElementById('inp-pass').value='';
+  }
+}
+
+function showDashboard(){
+  document.getElementById('login-screen').classList.remove('active');
+  document.getElementById('dashboard-screen').classList.add('active');
+
+  const u = USERS[currentUser];
+  const av = document.getElementById('db-avatar');
+  av.textContent = currentUser[0].toUpperCase();
+  av.className = 'avatar avatar-'+currentRole;
+
+  document.getElementById('db-username').textContent = currentUser;
+  const rp = document.getElementById('db-role-pill');
+  rp.textContent = currentRole.toUpperCase();
+  rp.className = 'role-pill role-'+currentRole;
+
+  document.getElementById('crypto-salt').textContent = u.salt;
+  document.getElementById('crypto-hash').textContent = u.hash+'…';
+
+  renderResources();
+  renderStats();
+  renderLog();
+}
+
+function renderResources(){
+  const grid = document.getElementById('resources-grid');
+  grid.innerHTML = RESOURCES_DEF.map(r=>{
+    const allowed = r.roles.includes(currentRole);
+    return `<div class="resource-card ${allowed?'':'locked'}" onclick="requestAccess('${r.id}','${r.name}',${allowed})">
+      <div>
+        <div class="resource-icon">${r.icon}</div>
+        <div class="resource-name">${r.name}</div>
+        <div class="resource-desc">${r.desc}</div>
+      </div>
+      <span class="access-badge ${allowed?'access-ok':'access-no'}">${allowed?'ALLOWED':'LOCKED'}</span>
+    </div>`;
+  }).join('');
+}
+
+function requestAccess(id, name, allowed){
+  const ts = new Date().toLocaleTimeString();
+  const entry = { name, allowed, ts };
+  logEntries.unshift(entry);
+  if(allowed) grantedCount++; else deniedCount++;
+  renderStats();
+  renderLog();
+  showToast(allowed, name);
+}
+
+function renderStats(){
+  document.getElementById('stat-granted').textContent = grantedCount;
+  document.getElementById('stat-denied').textContent  = deniedCount;
+  document.getElementById('stat-total').textContent   = grantedCount+deniedCount;
+}
+
+function renderLog(){
+  const empty = document.getElementById('log-empty');
+  const list  = document.getElementById('log-list');
+  if(!logEntries.length){ empty.style.display='block'; list.innerHTML=''; return; }
+  empty.style.display='none';
+  list.innerHTML = logEntries.map(e=>`
+    <div class="log-entry ${e.allowed?'log-ok-entry':'log-fail-entry'}">
+      <div class="log-icon">${e.allowed?'✅':'🚫'}</div>
+      <div class="log-text">
+        <div class="log-action">${e.allowed?'ACCESS GRANTED':'ACCESS DENIED'}</div>
+        <div style="color:var(--muted);font-size:10px">${currentUser} → ${e.name}</div>
+        <div class="log-time">${e.ts}</div>
+      </div>
+    </div>`).join('');
+}
+
+function showToast(ok, name){
+  const t = document.getElementById('toast');
+  t.textContent = ok ? `✅ Access granted: ${name}` : `🚫 Access denied: ${name}`;
+  t.className = 'toast show '+(ok?'toast-ok':'toast-fail');
+  setTimeout(()=>{ t.className='toast'; }, 2500);
+}
+
+function doLogout(){
+  currentUser=null; currentRole=null;
+  document.getElementById('inp-user').value='';
+  document.getElementById('inp-pass').value='';
+  document.getElementById('dashboard-screen').classList.remove('active');
+  document.getElementById('login-screen').classList.add('active');
+}
+</script>
+</body>
+</html>
